@@ -7,6 +7,7 @@ use App\Services\JwtService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
@@ -21,14 +22,12 @@ class AuthController extends Controller
 
         $user = $this->findUser()->where('users.email', $credentials['email'])->first();
 
-        if ($user === null || ! $user->is_active || ! hash_equals((string) $user->password_hash, hash('sha256', $credentials['password']))) {
+        if ($user === null || $user->status !== 'active' || ! $this->verifyPassword($credentials['password'], (string) $user->password_hash)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Email atau password salah',
+                'message' => 'Email atau password salah atau akun nonaktif',
             ], 401);
         }
-
-        DB::table('users')->where('id', $user->id)->update(['last_login_at' => now()]);
 
         $publicUser = $this->toPublicUser($user);
 
@@ -48,58 +47,67 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:150'],
             'password' => ['required', 'string', 'min:6'],
+            'gender' => ['sometimes', 'string', 'in:male,female'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'address' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $exists = DB::table('users')->where('email', $data['email'])->exists();
-
-        if ($exists) {
+        if (DB::table('users')->where('email', $data['email'])->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Email sudah terdaftar',
             ], 409);
         }
 
-        $userId = DB::transaction(function () use ($data): int {
-            $userId = (int) DB::table('users')->insertGetId([
-                'email' => $data['email'],
-                'password_hash' => hash('sha256', $data['password']),
-                'role' => 'karyawan',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
+        $result = DB::transaction(function () use ($data): array {
             $nextNumber = (int) DB::table('employees')
                 ->selectRaw('COALESCE(MAX(CAST(SUBSTRING(nip, 4) AS UNSIGNED)), 0) + 1 AS next_number')
                 ->value('next_number');
 
-            DB::table('employees')->insert([
-                'user_id' => $userId,
-                'nip' => 'EMP'.str_pad((string) $nextNumber, 3, '0', STR_PAD_LEFT),
+            $nip = 'EMP'.str_pad((string) $nextNumber, 3, '0', STR_PAD_LEFT);
+
+            $employeeId = (int) DB::table('employees')->insertGetId([
+                'nip' => $nip,
                 'full_name' => $data['name'],
-                'email' => $data['email'],
-                'position' => 'Staff',
+                'gender' => $data['gender'] ?? 'male',
+                'phone' => $data['phone'] ?? null,
+                'address' => $data['address'] ?? null,
+                'department_id' => 1,
+                'position_id' => 2,
                 'join_date' => now()->toDateString(),
                 'status' => 'active',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            return $userId;
-        });
+            $userId = (int) DB::table('users')->insertGetId([
+                'employee_id' => $employeeId,
+                'email' => $data['email'],
+                'password_hash' => Hash::make($data['password']),
+                'role' => 'karyawan',
+                'status' => 'active',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        $publicUser = [
-            'id' => $userId,
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'role' => 'karyawan',
-            'position' => 'Staff',
-            'division' => null,
-        ];
+            return ['user_id' => $userId, 'employee_id' => $employeeId, 'nip' => $nip];
+        });
 
         return response()->json([
             'success' => true,
             'message' => 'User registered successfully',
-            'data' => $publicUser,
+            'data' => [
+                'id' => $result['user_id'],
+                'employeeId' => $result['employee_id'],
+                'nip' => $result['nip'],
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'role' => 'karyawan',
+                'status' => 'active',
+                'departmentId' => 1,
+                'department' => 'Engineering',
+                'position' => 'Senior Frontend Dev',
+            ],
         ], 201);
     }
 
@@ -119,32 +127,59 @@ class AuthController extends Controller
         ]);
     }
 
+    private function verifyPassword(string $plain, string $storedHash): bool
+    {
+        if (password_verify($plain, $storedHash)) {
+            return true;
+        }
+
+        return hash_equals($storedHash, hash('sha256', $plain));
+    }
+
     private function findUser()
     {
         return DB::table('users')
-            ->leftJoin('employees', 'employees.user_id', '=', 'users.id')
-            ->leftJoin('divisions', 'divisions.id', '=', 'employees.division_id')
+            ->leftJoin('employees', 'employees.id', '=', 'users.employee_id')
+            ->leftJoin('departments', 'departments.id', '=', 'employees.department_id')
+            ->leftJoin('positions', 'positions.id', '=', 'employees.position_id')
             ->select(
                 'users.id',
+                'users.employee_id',
                 'users.email',
                 'users.password_hash',
                 'users.role',
-                'users.is_active',
+                'users.status',
+                'employees.nip',
                 'employees.full_name as name',
-                'employees.position',
-                'divisions.name as division'
+                'employees.gender',
+                'employees.phone',
+                'employees.address',
+                'employees.department_id',
+                'employees.join_date',
+                'employees.status as employee_status',
+                'departments.name as department',
+                'positions.name as position'
             );
     }
 
     private function toPublicUser(object $user): array
     {
         return [
-            'id' => $user->id,
+            'id' => (int) $user->id,
+            'employeeId' => $user->employee_id !== null ? (int) $user->employee_id : null,
+            'nip' => $user->nip,
             'name' => $user->name ?: $user->email,
             'email' => $user->email,
             'role' => $user->role,
+            'status' => $user->status,
+            'gender' => $user->gender,
+            'phone' => $user->phone,
+            'address' => $user->address,
+            'departmentId' => $user->department_id !== null ? (int) $user->department_id : null,
+            'department' => $user->department,
             'position' => $user->position,
-            'division' => $user->division,
+            'joinDate' => $user->join_date,
+            'employeeStatus' => $user->employee_status,
         ];
     }
 }

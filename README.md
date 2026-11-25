@@ -1,145 +1,68 @@
 # HRIS - Final Project FWD GAPJOTEN (Kelompok 3)
 
-Aplikasi Fullstack **Sistem Absensi Karyawan** dengan 3 role: **karyawan**, **SPV**, dan **HRD**, menggunakan arsitektur terpisah (*decoupled*):
+Aplikasi Fullstack **GAPJOTEN HRIS — Face Recognition Attendance & Employee Dashboard** menggunakan arsitektur terpisah (*decoupled*):
 
-- **Frontend**: React (Vite) menggunakan format komponen **JSX** (`.jsx`).
-- **Backend**: **Laravel 13** (PHP 8.3) sebagai RESTful API dengan MySQL. Fokus modul SPV: ringkasan dan monitoring tim secara read-only (sesuai SRS, SPV tidak melakukan approval; approval ada di HRD).
+- **Frontend**: React (Vite) menggunakan komponen **JSX** (`.jsx`).
+- **Backend**: **Laravel 13** (PHP 8.3) sebagai RESTful API dengan database **MySQL** (`db_uas`).
 
 ---
 
-## Struktur Folder & File Proyek
+## Ruang Lingkup Implementasi Saat Ini
 
-```text
-Final-Project-FWD-GAPJOTEN-HRIS_Kel3/
-├── backend/                         # Source code Backend (Laravel 13)
-│   ├── app/
-│   │   ├── Http/
-│   │   │   ├── Controllers/Api/     # AuthController, EmployeeController, SpvController
-│   │   │   └── Middleware/          # VerifyJwt, EnsureRole
-│   │   └── Services/JwtService.php  # Sign & verify token JWT (HS256)
-│   ├── bootstrap/app.php            # Registrasi route api, CORS, middleware alias
-│   ├── config/cors.php              # Akses CORS untuk frontend Vite
-│   ├── routes/api.php               # Definisi endpoint /api
-│   ├── .env                         # Konfigurasi DB, APP_KEY, JWT_SECRET
-│   ├── artisan                      # Entry point command Laravel
-│   └── composer.json                # Dependensi & script backend
-│
-├── frontend/                        # Source code Frontend (React JSX + Vite)
-│   ├── src/
-│   │   ├── components/              # Komponen UI modular (.jsx)
-│   │   ├── context/                 # AuthContext.jsx
-│   │   ├── layouts/                 # MainLayout.jsx
-│   │   ├── pages/                   # Dashboard, Employees, Login, NotFound
-│   │   ├── services/api.js          # Fetch API ke backend
-│   │   └── App.jsx                  # Routing React Router DOM
-│   ├── .env                         # VITE_API_BASE_URL=http://localhost:5000/api
-│   └── package.json
-│
-├── package.json                     # Script root untuk Laravel + frontend
-└── README.md
-```
+- **Role `karyawan` (diimplementasikan penuh):**
+  - Dashboard ringkasan kehadiran pribadi & pengumuman perusahaan
+  - **Absensi Wajah** (Browser Camera API `getUserMedia` + verifikasi liveness + prosedur alternatif jika kamera terkendala, Clock In / Clock Out berbasis waktu server)
+  - **Riwayat Absensi** pribadi dengan filter rentang tanggal
+  - **Pengajuan Cuti** & **Izin Sakit** (termasuk unggah file surat dokter PDF/JPG/PNG)
+  - **Status Pengajuan** (Menunggu / Disetujui / Ditolak)
+  - **Informasi Perusahaan** & **Profil Saya** (perbarui informasi pribadi yang diizinkan)
+- **Role `spv` (diimplementasikan penuh, read-only sesuai divisi):**
+  - Dashboard statistik kehadiran tim divisinya
+  - **Data Tim**, **Monitoring Absensi** hari ini, & **Riwayat Kehadiran** tim
+  - **Pengajuan Cuti** & **Izin Sakit** tim (hanya baca + lihat surat dokter, tanpa approval)
+  - **Laporan Tim** berdasarkan periode + unduh CSV
+  - **Informasi Perusahaan** & **Profil Saya**
+- **Role `hrd`:** *Belum diimplementasikan (disiapkan untuk dikerjakan oleh rekan tim HRD).*
+
+---
+
+## Struktur Database (`db_uas`)
+
+1. **`departments`**: Master data departemen (`id`, `name`, `code`, `description`).
+2. **`positions`**: Master data jabatan per departemen (`id`, `department_id`, `name`, `base_salary`).
+3. **`employees`**: Data induk pegawai (`id`, `nip`, `full_name`, `gender`, `phone`, `address`, `department_id`, `position_id`, `join_date`, `status`).
+4. **`users`**: Akun login & hak akses (`id`, `employee_id`, `email`, `password_hash`, `role`: `'hrd' | 'spv' | 'karyawan'`, `status`).
+5. **`attendances`**: Presensi harian pegawai (`id`, `employee_id`, `date`, `clock_in`, `clock_out`, `status`, `method`: `'face' | 'manual'`, `liveness_passed`, `notes`).
+6. **`leave_requests`**: Pengajuan cuti/izin (`id`, `employee_id`, `leave_type`, `start_date`, `end_date`, `reason`, `medical_certificate_path`, `status`, `approved_by`).
+7. **`company_announcements`**: Pengumuman perusahaan (`id`, `title`, `body`, `created_by`, `published_at`).
+
+File SQL tersedia di [backend/database/gapjoten_hris_database.sql](file:///c:/laragon/www/Final-Project-FWD-GAPJOTEN-HRIS_Kel3/backend/database/gapjoten_hris_database.sql).
 
 ---
 
 ## Panduan Menjalankan Proyek
 
-### 1. Instalasi Dependensi
-
-Dari root folder proyek:
-
+### 1. Backend (Laravel 13)
+Buka Terminal bawaan **Laragon** (PHP 8.3) atau terminal dengan PHP 8.3 di `PATH`:
 ```bash
-npm run install:all
+cd backend
+php artisan serve
 ```
+Server berjalan di `http://127.0.0.1:8000`.
 
-Atau manual:
-
+### 2. Frontend (React JSX + Vite)
 ```bash
-composer install --working-dir=backend
-npm --prefix frontend install
+cd frontend
+npm run dev
 ```
-
-### 2. Konfigurasi Environment Variables
-
-- **Backend**:
-  Salin `.env.example` menjadi `.env` di folder `backend/`, lalu isi:
-
-```dotenv
-APP_URL=http://localhost:5000
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=db_uas
-DB_USERNAME=root
-DB_PASSWORD=
-JWT_SECRET=change-me-in-local-env
-JWT_EXPIRES_IN=86400
-```
-
-Generate `APP_KEY`:
-
-```bash
-php backend/artisan key:generate
-```
-
-File SQL ada di `backend/database/gapjoten_hris_database.sql`. Import file tersebut di Laragon/phpMyAdmin; script sudah membuat database **`db_uas`**.
-
-- **Frontend**:
-  Pastikan `frontend/.env` berisi:
-
-```dotenv
-VITE_API_BASE_URL=http://localhost:5000/api
-```
-
-### 3. Menjalankan Aplikasi dalam Mode Development
-
-Buka 2 terminal terpisah:
-
-- **Terminal 1 (Backend - Laravel)**:
-  ```bash
-  npm run dev:backend
-  ```
-  Atau:
-  ```bash
-  php backend/artisan serve --port=5000
-  ```
-  Server API berjalan di `http://localhost:5000`.
-
-- **Terminal 2 (Frontend - React JSX / Vite)**:
-  ```bash
-  npm run dev:frontend
-  ```
-  Aplikasi frontend berjalan di `http://localhost:5173`.
+Aplikasi web berjalan di `http://localhost:5173`.
 
 ---
 
-## Endpoint API Utama (Backend)
+## Akun Demo
 
-| Method | Endpoint | Keterangan |
-| :--- | :--- | :--- |
-| `GET` | `/api/health` | Pengecekan status server API |
-| `POST` | `/api/auth/login` | Login user & penerbitan token JWT |
-| `POST` | `/api/auth/register` | Pendaftaran akun user baru |
-| `GET` | `/api/auth/profile` | Mengambil data profil user aktif |
-| `GET` | `/api/employees` | Mengambil semua daftar data pegawai |
-| `GET` | `/api/employees/:id` | Mengambil detail satu data pegawai |
-| `POST` | `/api/employees` | Menambahkan data pegawai baru |
-| `PUT` | `/api/employees/:id` | Memperbarui data pegawai |
-| `DELETE` | `/api/employees/:id` | Menghapus data pegawai |
-| `GET` | `/api/spv/dashboard` | Ringkasan tim & statistik cuti/izin (SPV) |
-| `GET` | `/api/spv/team` | Daftar anggota tim SPV |
-| `GET` | `/api/spv/my-attendance` | Absensi pribadi SPV hari ini + riwayat 7 hari |
-| `POST` | `/api/spv/my-attendance/check-in` | Absen masuk SPV (face recognition) |
-| `POST` | `/api/spv/my-attendance/check-out` | Absen pulang SPV |
-| `GET` | `/api/spv/attendance` | Absensi tim hari ini |
-| `GET` | `/api/spv/late-employees` | Daftar anggota tim yang terlambat |
-| `GET` | `/api/spv/leave-requests` | Pengajuan cuti/izin tim (`?status=pending\|approved\|rejected`), read-only |
-
-Semua endpoint `/api/spv/*` memerlukan header `Authorization: Bearer <token>` dan role `spv`. SPV tidak memiliki endpoint approval; sesuai SRS, approval cuti/izin dilakukan HRD.
-
-### Akun demo
-
-| Role | Email | Password |
-| :--- | :--- | :--- |
-| SPV | `jonathan@gapjoten.id` | `spv123` |
-| HRD | `siti@gapjoten.id` | `hrd123` |
-| Karyawan | `budi@gapjoten.id` | `karyawan123` |
+| Role | Email | Password | Keterangan |
+| :--- | :--- | :--- | :--- |
+| **Karyawan** | `budi@gapjoten.id` | `karyawan123` | Divisi Engineering |
+| **SPV** | `spv@gapjoten.id` | `spv123` | Supervisor Divisi Engineering |
+| **HRD** | `hrd@gapjoten.id` | `hrd123` | Placeholder (fitur HRD dikerjakan rekan tim) |

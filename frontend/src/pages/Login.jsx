@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
+import gapjotenLogo from '../assets/gapjoten-logo.png';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -27,15 +28,18 @@ const Login = () => {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '3rem auto' }}>
-      <div className="card">
-        <h2 style={{ marginBottom: '0.5rem', textAlign: 'center' }}>Login HRIS</h2>
-        <p style={{ color: '#64748b', fontSize: '0.85rem', textAlign: 'center', marginBottom: '1.5rem' }}>
-          Masuk ke sistem informasi sumber daya manusia
-        </p>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+      <div className="card" style={{ width: '100%', maxWidth: '420px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <img src={gapjotenLogo} alt="GAPJOTEN HRIS" className="login-logo" />
+          <h2 style={{ marginBottom: '0.25rem' }}>GAPJOTEN HRIS</h2>
+          <p style={{ color: '#64748b', fontSize: '0.85rem' }}>
+            Smart Workforce Management System
+          </p>
+        </div>
 
         {error && (
-          <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.85rem' }}>
+          <div className="alert error" style={{ marginBottom: '1rem' }}>
             {error}
           </div>
         )}
@@ -43,21 +47,15 @@ const Login = () => {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
-              Email Pegawai / Admin
+              Email
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@gapjoten.id"
+              placeholder="budi@gapjoten.id"
               required
-              style={{
-                width: '100%',
-                padding: '0.6rem 0.75rem',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                fontSize: '0.9rem',
-              }}
+              className="notes-input"
             />
           </div>
 
@@ -71,13 +69,7 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              style={{
-                width: '100%',
-                padding: '0.6rem 0.75rem',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                fontSize: '0.9rem',
-              }}
+              className="notes-input"
             />
           </div>
 
@@ -85,15 +77,23 @@ const Login = () => {
             type="submit"
             className="btn-primary"
             disabled={loading}
-            style={{ width: '100%', marginTop: '0.5rem', padding: '0.75rem' }}
+            style={{ width: '100%', marginTop: '0.25rem', padding: '0.75rem' }}
           >
             {loading ? 'Memproses...' : 'Masuk ke Sistem'}
           </button>
         </form>
+
+        <div style={{ marginTop: '1.25rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', fontSize: '0.8rem', color: '#475569' }}>
+          <strong>Akun Demo Tersedia:</strong>
+          <div>Karyawan (Engineering): <code>budi@gapjoten.id</code> / <code>karyawan123</code></div>
+          <div>SPV (Engineering): <code>spv@gapjoten.id</code> / <code>spv123</code></div>
+          <div style={{ marginTop: '0.35rem', color: '#64748b' }}>
+            *(Role HRD belum aktif — disiapkan untuk pengembangan tim HRD)*
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 export default Login;
-

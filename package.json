@@ -4,9 +4,9 @@
   "description": "Fullstack HRIS Project - GAPJOTEN Kelompok 3",
   "private": true,
   "scripts": {
-    "dev:backend": "php backend/artisan serve --port=5000",
+    "dev:backend": "php backend/artisan serve",
     "dev:frontend": "npm --prefix frontend run dev",
-    "start:backend": "php backend/artisan serve --port=5000",
+    "start:backend": "php backend/artisan serve",
     "build:frontend": "npm --prefix frontend run build",
     "install:all": "composer install --working-dir=backend && npm --prefix frontend install"
   },

@@ -1,10 +1,22 @@
 import { API_BASE_URL } from '../utils/constants.js';
 
+function buildQuery(params = {}) {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      searchParams.set(key, String(value));
+    }
+  });
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : '';
+}
+
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('token');
+  const isFormData = options.body instanceof FormData;
 
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };
@@ -25,6 +37,7 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
+  // Auth & Shared
   login: (credentials) =>
     request('/auth/login', {
       method: 'POST',
@@ -36,39 +49,58 @@ export const api = {
       body: JSON.stringify(userData),
     }),
   getProfile: () => request('/auth/profile'),
+  getAnnouncements: () => request('/announcements'),
+  downloadMedicalCertificate: async (leaveId) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/leave-requests/${leaveId}/medical-certificate`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      throw new Error('Gagal mengunduh surat dokter');
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+  },
 
-  getEmployees: () => request('/employees'),
-  getEmployeeById: (id) => request(`/employees/${id}`),
-  createEmployee: (employeeData) =>
-    request('/employees', {
+  // Karyawan API
+  getKaryawanDashboard: () => request('/karyawan/dashboard'),
+  getKaryawanAttendance: (params) => request(`/karyawan/attendance${buildQuery(params)}`),
+  clockIn: (payload) =>
+    request('/karyawan/attendance/clock-in', {
       method: 'POST',
-      body: JSON.stringify(employeeData),
+      body: JSON.stringify(payload),
     }),
-  updateEmployee: (id, employeeData) =>
-    request(`/employees/${id}`, {
+  clockOut: (payload) =>
+    request('/karyawan/attendance/clock-out', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getKaryawanLeaves: (params) => request(`/karyawan/leave-requests${buildQuery(params)}`),
+  submitKaryawanLeave: (formData) =>
+    request('/karyawan/leave-requests', {
+      method: 'POST',
+      body: formData,
+    }),
+  getKaryawanProfile: () => request('/karyawan/profile'),
+  updateKaryawanProfile: (payload) =>
+    request('/karyawan/profile', {
       method: 'PUT',
-      body: JSON.stringify(employeeData),
-    }),
-  deleteEmployee: (id) =>
-    request(`/employees/${id}`, {
-      method: 'DELETE',
+      body: JSON.stringify(payload),
     }),
 
+  // SPV API
   getSpvDashboard: () => request('/spv/dashboard'),
-  getMyAttendance: () => request('/spv/my-attendance'),
-  checkIn: (payload) =>
-    request('/spv/my-attendance/check-in', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  checkOut: (payload) =>
-    request('/spv/my-attendance/check-out', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
   getSpvTeam: () => request('/spv/team'),
-  getSpvAttendance: () => request('/spv/attendance'),
-  getSpvLateEmployees: () => request('/spv/late-employees'),
-  getSpvLeaveRequests: (status) =>
-    request(`/spv/leave-requests${status ? `?status=${status}` : ''}`),
+  getSpvAttendanceToday: () => request('/spv/attendance/today'),
+  getSpvAttendanceHistory: (params) => request(`/spv/attendance/history${buildQuery(params)}`),
+  getSpvLeaveRequests: (params) => request(`/spv/leave-requests${buildQuery(params)}`),
+  getSpvReports: (params) => request(`/spv/reports${buildQuery(params)}`),
+  getSpvProfile: () => request('/spv/profile'),
+  updateSpvProfile: (payload) =>
+    request('/spv/profile', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
 };
