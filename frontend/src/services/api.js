@@ -1,8 +1,5 @@
 import { API_BASE_URL } from '../utils/constants.js';
 
-/**
- * Reusable API request helper
- */
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('token');
 
@@ -28,7 +25,6 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
-  // Auth
   login: (credentials) =>
     request('/auth/login', {
       method: 'POST',
@@ -41,7 +37,6 @@ export const api = {
     }),
   getProfile: () => request('/auth/profile'),
 
-  // Employees
   getEmployees: () => request('/employees'),
   getEmployeeById: (id) => request(`/employees/${id}`),
   createEmployee: (employeeData) =>
@@ -58,5 +53,22 @@ export const api = {
     request(`/employees/${id}`, {
       method: 'DELETE',
     }),
-};
 
+  getSpvDashboard: () => request('/spv/dashboard'),
+  getMyAttendance: () => request('/spv/my-attendance'),
+  checkIn: (payload) =>
+    request('/spv/my-attendance/check-in', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  checkOut: (payload) =>
+    request('/spv/my-attendance/check-out', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getSpvTeam: () => request('/spv/team'),
+  getSpvAttendance: () => request('/spv/attendance'),
+  getSpvLateEmployees: () => request('/spv/late-employees'),
+  getSpvLeaveRequests: (status) =>
+    request(`/spv/leave-requests${status ? `?status=${status}` : ''}`),
+};

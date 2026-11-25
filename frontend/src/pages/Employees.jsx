@@ -39,7 +39,7 @@ const Employees = () => {
       </div>
 
       <div className="card">
-        {loading && <p>Memuat data pegawai dari backend Node.js...</p>}
+        {loading && <p>Memuat data pegawai dari backend Laravel...</p>}
         {error && (
           <div style={{ padding: '1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '6px' }}>
             {error} (Pastikan server backend sudah berjalan di port 5000)

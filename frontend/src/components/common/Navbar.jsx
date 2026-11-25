@@ -1,32 +1,38 @@
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth.js';
 
+const initials = (name) =>
+  (name || 'User')
+    .split(' ')
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase();
+
 const Navbar = () => {
   const { user, logout } = useAuth();
 
   return (
-    <header className="navbar">
-      <div className="navbar-title">
-        <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>
-          Human Resource Information System
-        </h3>
+    <header className="topbar">
+      <div className="topbar-search">
+        <span className="search-icon">Cari</span>
+        <input type="search" placeholder="Cari karyawan atau waktu" aria-label="Cari karyawan atau waktu" />
       </div>
-      <div className="navbar-user">
-        <span style={{ fontSize: '0.9rem', color: '#64748b' }}>
-          Halo, <strong>{user?.name || 'Administrator'}</strong>
-        </span>
-        <button
-          onClick={logout}
-          style={{
-            background: '#fee2e2',
-            color: '#dc2626',
-            padding: '0.4rem 0.8rem',
-            borderRadius: '6px',
-            fontSize: '0.85rem',
-            fontWeight: 500,
-          }}
-        >
-          Logout
+
+      <div className="topbar-actions">
+        <button type="button" className="notification-button" aria-label="Notifikasi">
+          Notifikasi
+          <span className="notification-count">4</span>
+        </button>
+        <div className="topbar-user">
+          <div className="avatar">{initials(user?.name)}</div>
+          <div className="topbar-user-meta">
+            <strong>{user?.name || 'Jonathan'}</strong>
+            <span>{user?.role?.toUpperCase() || 'SPV'}</span>
+          </div>
+        </div>
+        <button type="button" className="logout-button" onClick={logout}>
+          Keluar
         </button>
       </div>
     </header>
@@ -34,4 +40,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
