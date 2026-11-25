@@ -22,7 +22,11 @@ const MainLayout = () => {
         </main>
         <footer className="main-footer">
           <span>&copy; 2026 GAPJOTEN HRIS</span>
-          <span>{portalLabel} &bull; Informasi hanya untuk akun Anda</span>
+          <span>
+            {user?.role === 'hrd'
+              ? `Data diperbarui pukul ${new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(new Date())} WIB • ${new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }).format(new Date())}`
+              : `${portalLabel} • Informasi hanya untuk akun Anda`}
+          </span>
         </footer>
       </div>
     </div>

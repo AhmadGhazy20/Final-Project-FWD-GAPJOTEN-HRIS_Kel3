@@ -5,7 +5,7 @@ import { formatDate } from '../utils/formatters.js';
 
 const Profile = () => {
   const { user } = useAuth();
-  const isSpv = user?.role === 'spv';
+  const role = user?.role;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -16,7 +16,11 @@ const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = isSpv ? await api.getSpvProfile() : await api.getKaryawanProfile();
+        const res = role === 'spv'
+          ? await api.getSpvProfile()
+          : role === 'hrd'
+            ? await api.getHrdProfile()
+            : await api.getKaryawanProfile();
         const p = res.data;
         setProfile(p);
         setForm({
@@ -33,7 +37,7 @@ const Profile = () => {
     };
 
     fetchProfile();
-  }, [isSpv]);
+  }, [role]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,7 +45,11 @@ const Profile = () => {
     setFeedback({ message: '', error: '' });
 
     try {
-      const res = isSpv ? await api.updateSpvProfile(form) : await api.updateKaryawanProfile(form);
+      const res = role === 'spv'
+        ? await api.updateSpvProfile(form)
+        : role === 'hrd'
+          ? await api.updateHrdProfile(form)
+          : await api.updateKaryawanProfile(form);
       setProfile(res.data);
       setFeedback({ message: res.message || 'Profil berhasil diperbarui.', error: '' });
     } catch (err) {

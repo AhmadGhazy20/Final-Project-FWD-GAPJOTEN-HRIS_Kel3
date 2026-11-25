@@ -6,6 +6,8 @@ USE db_uas;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS system_settings;
+DROP TABLE IF EXISTS face_registrations;
 DROP TABLE IF EXISTS company_announcements;
 DROP TABLE IF EXISTS leave_requests;
 DROP TABLE IF EXISTS attendances;
@@ -106,6 +108,7 @@ CREATE TABLE leave_requests (
   medical_certificate_path VARCHAR(255) NULL,
   status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
   approved_by INT UNSIGNED NULL,
+  decision_notes VARCHAR(500) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -127,6 +130,37 @@ CREATE TABLE company_announcements (
   PRIMARY KEY (id),
   KEY idx_announcements_published (published_at),
   CONSTRAINT fk_announcements_author FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE face_registrations (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  employee_id INT UNSIGNED NOT NULL,
+  biometric_template_enc TEXT NOT NULL,
+  template_hash VARCHAR(64) NOT NULL,
+  consent_given TINYINT(1) NOT NULL DEFAULT 1,
+  consent_at DATETIME NOT NULL,
+  liveness_verified TINYINT(1) NOT NULL DEFAULT 1,
+  registered_by INT UNSIGNED NULL,
+  retention_until DATE NULL,
+  status ENUM('active', 'revoked') NOT NULL DEFAULT 'active',
+  notes VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_face_registrations_employee (employee_id),
+  KEY idx_face_registrations_status (status),
+  CONSTRAINT fk_face_registrations_employee FOREIGN KEY (employee_id) REFERENCES employees (id) ON DELETE CASCADE,
+  CONSTRAINT fk_face_registrations_user FOREIGN KEY (registered_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE system_settings (
+  setting_key VARCHAR(100) NOT NULL,
+  setting_value VARCHAR(500) NOT NULL,
+  description VARCHAR(255) NULL,
+  updated_by INT UNSIGNED NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (setting_key),
+  CONSTRAINT fk_system_settings_user FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO departments (id, name, code, description) VALUES
@@ -192,3 +226,13 @@ INSERT INTO company_announcements (id, title, body, created_by, published_at) VA
   (1, 'Kebijakan Absensi Pengenalan Wajah', 'Seluruh karyawan wajib melakukan Clock In dan Clock Out melalui menu Absensi Wajah. Batas keterlambatan adalah 15 menit setelah pukul 08:00 WIB. Jika kamera mengalami kendala, gunakan prosedur alternatif yang tersedia.', 2, DATE_SUB(NOW(), INTERVAL 2 DAY)),
   (2, 'Ketentuan Pengajuan Izin Sakit', 'Setiap pengajuan izin sakit wajib melampirkan surat keterangan dokter dalam format PDF, JPG, atau PNG (maksimal 2 MB) agar dapat diproses oleh HRD.', 2, DATE_SUB(NOW(), INTERVAL 1 DAY)),
   (3, 'Libur Nasional & Jadwal Operasional', 'Perusahaan libur mengikuti kalender libur nasional pemerintah. Pengajuan cuti tahunan disarankan minimal 2 hari kerja sebelumnya.', 2, NOW());
+
+INSERT INTO system_settings (setting_key, setting_value, description, updated_by) VALUES
+  ('company_name', 'GAPJOTEN Technology Solutions', 'Nama resmi perusahaan', 2),
+  ('office_location', 'Jakarta - Kantor Pusat', 'Lokasi kantor operasional utama', 2),
+  ('work_start', '08:00', 'Jam masuk kerja standar (WIB)', 2),
+  ('work_end', '17:00', 'Jam pulang kerja standar (WIB)', 2),
+  ('late_tolerance_minutes', '15', 'Batas toleransi keterlambatan (menit)', 2),
+  ('annual_leave_quota', '12', 'Jatah cuti tahunan per karyawan (hari)', 2),
+  ('biometric_retention_days', '365', 'Masa retensi data referensi wajah (hari)', 2),
+  ('allow_alternative_attendance', '1', 'Izinkan prosedur alternatif saat kamera terkendala', 2);

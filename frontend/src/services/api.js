@@ -103,4 +103,87 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
+
+  // HRD API
+  getHrdDashboard: () => request('/hrd/dashboard'),
+  getHrdSummaryDetail: (type) => request(`/hrd/summary-detail${buildQuery({ type })}`),
+  getHrdEmployees: (params) => request(`/hrd/employees${buildQuery(params)}`),
+  createHrdEmployee: (payload) =>
+    request('/hrd/employees', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateHrdEmployee: (id, payload) =>
+    request(`/hrd/employees/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteHrdEmployee: (id) =>
+    request(`/hrd/employees/${id}`, {
+      method: 'DELETE',
+    }),
+  getHrdFaceRegistrations: () => request('/hrd/face-registrations'),
+  saveHrdFaceRegistration: (payload) =>
+    request('/hrd/face-registrations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteHrdFaceRegistration: (employeeId) =>
+    request(`/hrd/face-registrations/${employeeId}`, {
+      method: 'DELETE',
+    }),
+  getHrdAttendance: (params) => request(`/hrd/attendance${buildQuery(params)}`),
+  upsertHrdAttendance: (payload) =>
+    request('/hrd/attendance', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getHrdLeaveRequests: (params) => request(`/hrd/leave-requests${buildQuery(params)}`),
+  decideHrdLeaveRequest: (id, payload) =>
+    request(`/hrd/leave-requests/${id}/decision`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  createHrdAnnouncement: (payload) =>
+    request('/hrd/announcements', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateHrdAnnouncement: (id, payload) =>
+    request(`/hrd/announcements/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteHrdAnnouncement: (id) =>
+    request(`/hrd/announcements/${id}`, {
+      method: 'DELETE',
+    }),
+  getHrdReports: (params) => request(`/hrd/reports${buildQuery(params)}`),
+  getHrdSettings: () => request('/hrd/settings'),
+  updateHrdSettings: (payload) =>
+    request('/hrd/settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  createHrdDepartment: (payload) =>
+    request('/hrd/departments', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  createHrdPosition: (payload) =>
+    request('/hrd/positions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateHrdAccount: (id, payload) =>
+    request(`/hrd/accounts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  getHrdProfile: () => request('/hrd/profile'),
+  updateHrdProfile: (payload) =>
+    request('/hrd/profile', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
 };

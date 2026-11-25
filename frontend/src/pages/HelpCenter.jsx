@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth.js';
 const HelpCenter = () => {
   const { user } = useAuth();
   const isSpv = user?.role === 'spv';
+  const isHrd = user?.role === 'hrd';
 
   return (
     <div className="page">
@@ -21,13 +22,21 @@ const HelpCenter = () => {
           <div className="workspace-item">
             <span className="workspace-index">01</span>
             <div>
-              <strong>{isSpv ? 'Monitoring Tim' : 'Kendala Absensi Wajah'}</strong>
+              <strong>
+                {isHrd ? 'Kelola Karyawan & Face Registration' : isSpv ? 'Monitoring Tim' : 'Kendala Absensi Wajah'}
+              </strong>
               <p>
-                {isSpv
-                  ? 'Gunakan menu Monitoring absensi dan Riwayat kehadiran untuk memantau kedisiplinan anggota divisi Anda.'
-                  : 'Jika kamera perangkat mengalami kendala atau izin ditolak, gunakan tombol Prosedur Alternatif di halaman Absensi Wajah.'}
+                {isHrd
+                  ? 'Tambahkan karyawan melalui Data Karyawan, lalu rekam referensi wajah dengan persetujuan karyawan di Face Registration.'
+                  : isSpv
+                    ? 'Gunakan menu Monitoring absensi dan Riwayat kehadiran untuk memantau kedisiplinan anggota divisi Anda.'
+                    : 'Jika kamera perangkat mengalami kendala atau izin ditolak, gunakan tombol Prosedur Alternatif di halaman Absensi Wajah.'}
               </p>
-              {!isSpv && <Link to="/absensi-wajah" className="link-button">Buka absensi wajah &rarr;</Link>}
+              {isHrd ? (
+                <Link to="/hrd/face-registration" className="link-button">Buka Face Registration &rarr;</Link>
+              ) : (
+                !isSpv && <Link to="/absensi-wajah" className="link-button">Buka absensi wajah &rarr;</Link>
+              )}
             </div>
           </div>
 
@@ -36,11 +45,16 @@ const HelpCenter = () => {
             <div>
               <strong>Cuti &amp; Izin Sakit</strong>
               <p>
-                {isSpv
-                  ? 'SPV memantau pengajuan cuti & izin sakit tim secara read-only; persetujuan dilakukan oleh HRD.'
-                  : 'Pengajuan izin sakit wajib melampirkan surat keterangan dokter (PDF/JPG/PNG, maksimal 2 MB).'}
+                {isHrd
+                  ? 'Periksa dokumen surat dokter pada menu Izin Sakit dan berikan keputusan Setujui atau Tolak untuk pengajuan menunggu.'
+                  : isSpv
+                    ? 'SPV memantau pengajuan cuti & izin sakit tim secara read-only; persetujuan dilakukan oleh HRD.'
+                    : 'Pengajuan izin sakit wajib melampirkan surat keterangan dokter (PDF/JPG/PNG, maksimal 2 MB).'}
               </p>
-              <Link to={isSpv ? '/pengajuan-cuti-tim' : '/status-pengajuan'} className="link-button">
+              <Link
+                to={isHrd ? '/hrd/pengajuan-cuti' : isSpv ? '/pengajuan-cuti-tim' : '/status-pengajuan'}
+                className="link-button"
+              >
                 Lihat cuti &amp; izin &rarr;
               </Link>
             </div>
@@ -49,9 +63,15 @@ const HelpCenter = () => {
           <div className="workspace-item">
             <span className="workspace-index">03</span>
             <div>
-              <strong>Perubahan Data Pribadi</strong>
-              <p>Anda dapat memperbarui nama lengkap, jenis kelamin, nomor telepon, dan alamat melalui menu Profil saya.</p>
-              <Link to="/profil" className="link-button">Buka profil saya &rarr;</Link>
+              <strong>{isHrd ? 'Pengumuman, Laporan & Pengaturan' : 'Perubahan Data Pribadi'}</strong>
+              <p>
+                {isHrd
+                  ? 'Terbitkan informasi perusahaan, unduh laporan absensi CSV, dan sesuaikan jam kerja serta akun pengguna di Pengaturan.'
+                  : 'Anda dapat memperbarui nama lengkap, jenis kelamin, nomor telepon, dan alamat melalui menu Profil saya.'}
+              </p>
+              <Link to={isHrd ? '/hrd/pengaturan' : '/profil'} className="link-button">
+                {isHrd ? 'Buka pengaturan sistem' : 'Buka profil saya'} &rarr;
+              </Link>
             </div>
           </div>
         </section>

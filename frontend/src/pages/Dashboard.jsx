@@ -64,16 +64,18 @@ const Dashboard = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (role !== 'karyawan' && role !== 'spv') {
+    if (role !== 'karyawan' && role !== 'spv' && role !== 'hrd') {
       setLoading(false);
       return;
     }
 
     const fetchDashboard = async () => {
       try {
-        const res = role === 'spv'
-          ? await api.getSpvDashboard()
-          : await api.getKaryawanDashboard();
+        const res = role === 'hrd'
+          ? await api.getHrdDashboard()
+          : role === 'spv'
+            ? await api.getSpvDashboard()
+            : await api.getKaryawanDashboard();
         setData(res.data);
       } catch (err) {
         setError(err.message || 'Gagal memuat dashboard');
@@ -85,33 +87,431 @@ const Dashboard = () => {
     fetchDashboard();
   }, [role]);
 
-  if (role === 'hrd') {
-    return (
-      <div className="page">
-        <div className="page-header">
-          <div>
-            <div className="eyebrow">Portal HRD</div>
-            <h1 className="page-title">Modul HRD Belum Diaktifkan</h1>
-            <p className="page-subtitle">
-              Fitur manajemen HRD disiapkan untuk dikerjakan oleh rekan tim HRD.
-            </p>
-          </div>
-        </div>
-        <section className="panel">
-          <p className="panel-note">
-            Silakan login menggunakan akun <strong>Karyawan</strong> (<code>budi@gapjoten.id</code>) atau <strong>SPV</strong> (<code>spv@gapjoten.id</code>) untuk menggunakan aplikasi.
-          </p>
-        </section>
-      </div>
-    );
-  }
-
   if (loading) {
     return <div className="page"><p className="panel-note">Memuat beranda...</p></div>;
   }
 
   if (error) {
     return <div className="page"><div className="alert error">{error}</div></div>;
+  }
+
+  if (role === 'hrd') {
+    const stats = data?.stats || {};
+    const totalEmployees = stats.totalEmployees || 0;
+    const presentToday = stats.presentToday || 0;
+    const onTimeToday = stats.onTimeToday || 0;
+    const lateToday = stats.lateToday || 0;
+    const sickOrLeaveToday = stats.sickOrLeaveToday || 0;
+    const attendancePercentNum = totalEmployees ? Math.round((presentToday / totalEmployees) * 1000) / 10 : 0;
+    const attendancePercentText = attendancePercentNum.toFixed(1).replace('.', ',');
+
+    const todayFormatted = new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date());
+
+    const lateDelta = lateToday - (stats.yesterdayLate ?? lateToday);
+    const lateNote = lateDelta < 0
+      ? `\u2193 ${Math.abs(lateDelta)} dari hari sebelumnya`
+      : lateDelta > 0
+        ? `\u2191 ${lateDelta} dari hari sebelumnya`
+        : `${stats.notCheckedInToday || 0} belum melakukan absensi`;
+
+    const weeklyTrend = data?.weeklyTrend || [];
+    const chartW = 540;
+    const chartH = 190;
+    const padL = 42;
+    const padR = 22;
+    const padT = 24;
+    const padB = 28;
+    const plotW = chartW - padL - padR;
+    const plotH = chartH - padT - padB;
+    const minRate = 0;
+    const maxRate = 100;
+
+    const pointCoords = weeklyTrend.map((d, idx) => {
+      const x = weeklyTrend.length > 1
+        ? padL + (idx / (weeklyTrend.length - 1)) * plotW
+        : padL + plotW / 2;
+      const rate = d.isFuture && d.presentCount === 0 ? null : d.attendanceRate;
+      const y = rate !== null ? padT + ((maxRate - rate) / (maxRate - minRate)) * plotH : null;
+      return { ...d, x, y, rate };
+    });
+
+    const recordedPoints = pointCoords.filter((p) => p.y !== null);
+    const linePath = recordedPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const latestPoint = recordedPoints[recordedPoints.length - 1] || null;
+
+    const donutR = 54;
+    const donutCirc = 2 * Math.PI * donutR;
+    const donutFill = (Math.min(attendancePercentNum, 100) / 100) * donutCirc;
+
+    const handleQuickExport = async () => {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const monthStart = `${today.slice(0, 7)}-01`;
+        const res = await api.getHrdReports({ start_date: monthStart, end_date: today });
+        const rows = res.data?.rows || [];
+        const header = ['NIP', 'Nama', 'Departemen', 'Jabatan', 'Hadir', 'Terlambat', 'Izin Sakit', 'Cuti', 'Alpa', 'Total Hari'];
+        const lines = rows.map((r) => [
+          r.nip,
+          `"${r.fullName}"`,
+          `"${r.department || '-'}"`,
+          `"${r.position || '-'}"`,
+          r.present,
+          r.late,
+          r.sick,
+          r.leave,
+          r.absent,
+          r.totalDays,
+        ].join(','));
+        const csv = [header.join(','), ...lines].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `laporan-hrd-${monthStart}-${today}.csv`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        setError(err.message || 'Gagal mengekspor laporan');
+      }
+    };
+
+    const hrdStatusPill = (status) => {
+      if (status === 'present') return { label: 'Tepat waktu', cls: 'status-present' };
+      if (status === 'late') return { label: 'Terlambat', cls: 'status-late' };
+      if (status === 'sick') return { label: 'Izin sakit', cls: 'status-sick' };
+      if (status === 'leave') return { label: 'Cuti', cls: 'status-leave' };
+      if (status === 'absent') return { label: 'Alpa', cls: 'status-absent' };
+      return { label: 'Belum absen', cls: 'status-not_checked_in' };
+    };
+
+    const openKpiDetail = (type) => {
+      window.dispatchEvent(new CustomEvent('hrd-open-stat-detail', { detail: { type } }));
+    };
+
+    return (
+      <div className="page hrd-dashboard">
+        <div className="page-header" style={{ marginBottom: 0 }}>
+          <div>
+            <h1 className="page-title">Dashboard HRD</h1>
+            <p className="page-subtitle">Pantau produktivitas tim dan kelola SDM dalam satu tempat.</p>
+          </div>
+          <div className="hrd-header-actions">
+            <span className="hrd-date-chip">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              {todayFormatted}
+            </span>
+            <button type="button" className="hrd-export-btn" onClick={handleQuickExport}>
+              &darr; Ekspor laporan
+            </button>
+          </div>
+        </div>
+
+        <section className="hrd-banner">
+          <div>
+            <h2 className="hrd-banner-title">Tim yang hadir, bisnis yang bergerak.</h2>
+            <p className="hrd-banner-sub">
+              {attendancePercentText}% karyawan sudah melakukan absensi hari ini. Semangat untuk hari yang produktif!
+            </p>
+          </div>
+          <div className="hrd-org-pill">
+            <span className="hrd-org-dot" />
+            Seluruh organisasi
+          </div>
+        </section>
+
+        <div className="hrd-kpi-grid">
+          <button type="button" className="hrd-kpi-card clickable" onClick={() => openKpiDetail('total')}>
+            <div className="hrd-kpi-top">
+              <span className="hrd-kpi-label">Total karyawan</span>
+              <span className="hrd-kpi-icon blue">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </span>
+            </div>
+            <div className="hrd-kpi-value">{totalEmployees}</div>
+            <div className="hrd-kpi-sub good">
+              +{stats.newThisMonth || 0} karyawan bulan ini
+            </div>
+          </button>
+
+          <button type="button" className="hrd-kpi-card clickable" onClick={() => openKpiDetail('present')}>
+            <div className="hrd-kpi-top">
+              <span className="hrd-kpi-label">Hadir hari ini</span>
+              <span className="hrd-kpi-icon cyan">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </span>
+            </div>
+            <div className="hrd-kpi-value">{presentToday}</div>
+            <div className="hrd-kpi-sub">
+              {attendancePercentText}% dari {totalEmployees} terjadwal
+            </div>
+          </button>
+
+          <button type="button" className="hrd-kpi-card clickable" onClick={() => openKpiDetail('late')}>
+            <div className="hrd-kpi-top">
+              <span className="hrd-kpi-label">Terlambat</span>
+              <span className="hrd-kpi-icon amber">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </span>
+            </div>
+            <div className="hrd-kpi-value">{lateToday}</div>
+            <div className="hrd-kpi-sub warn">{lateNote}</div>
+          </button>
+
+          <button type="button" className="hrd-kpi-card clickable" onClick={() => openKpiDetail('leave_sick')}>
+            <div className="hrd-kpi-top">
+              <span className="hrd-kpi-label">Cuti &amp; sakit</span>
+              <span className="hrd-kpi-icon purple">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              </span>
+            </div>
+            <div className="hrd-kpi-value">{sickOrLeaveToday}</div>
+            <div className="hrd-kpi-sub">
+              {stats.leaveToday || 0} cuti &bull; {stats.sickToday || 0} izin sakit
+            </div>
+          </button>
+        </div>
+
+        <div className="hrd-mid-grid">
+          <section className="hrd-card">
+            <div className="panel-header" style={{ marginBottom: '0.4rem' }}>
+              <div>
+                <h2 className="panel-title">Tren kehadiran</h2>
+                <p className="panel-subtitle">Persentase kehadiran karyawan minggu ini</p>
+              </div>
+              <div className="hrd-trend-controls">
+                <div className="hrd-legend-group">
+                  <span className="hrd-legend-item"><span className="hrd-dot-cyan" /> Hadir</span>
+                  <span className="hrd-legend-item"><span className="hrd-dot-orange" /> Terlambat</span>
+                </div>
+                <span className="hrd-period-pill">Minggu ini</span>
+              </div>
+            </div>
+
+            <div className="hrd-chart-wrap">
+              <svg viewBox={`0 0 ${chartW} ${chartH}`} width="100%" style={{ minWidth: '380px', display: 'block' }}>
+                {[100, 75, 50, 25, 0].map((tick) => {
+                  const yPos = padT + ((maxRate - tick) / (maxRate - minRate)) * plotH;
+                  return (
+                    <g key={tick}>
+                      <line x1={padL} y1={yPos} x2={chartW - padR} y2={yPos} stroke="#f1f5f9" strokeWidth="1" />
+                      <text x={padL - 8} y={yPos + 4} textAnchor="end" fontSize="10" fill="#94a3b8">
+                        {tick}%
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {pointCoords.map((pt) => {
+                  const barH = Math.max((pt.lateRate / 100) * plotH, pt.lateCount > 0 ? 14 : 6);
+                  return (
+                    <g key={pt.day}>
+                      <rect
+                        x={pt.x - 11}
+                        y={padT + plotH - barH}
+                        width="22"
+                        height={barH}
+                        rx="4"
+                        fill={pt.lateCount > 0 ? '#fed7aa' : '#f1f5f9'}
+                      />
+                      <text x={pt.x} y={chartH - 8} textAnchor="middle" fontSize="11" fill="#64748b">
+                        {pt.day}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {linePath && (
+                  <path d={linePath} fill="none" stroke="#06b6d4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                )}
+
+                {recordedPoints.map((pt) => (
+                  <circle key={`dot-${pt.day}`} cx={pt.x} cy={pt.y} r="4.5" fill="#06b6d4" stroke="#ffffff" strokeWidth="2" />
+                ))}
+
+                {latestPoint && (
+                  <g transform={`translate(${Math.min(latestPoint.x - 24, chartW - 64)}, ${Math.max(latestPoint.y - 28, 4)})`}>
+                    <rect width="48" height="20" rx="5" fill="#0f172a" />
+                    <text x="24" y="13.5" textAnchor="middle" fontSize="10" fontWeight="700" fill="#ffffff">
+                      {String(latestPoint.rate).replace('.', ',')}%
+                    </text>
+                  </g>
+                )}
+              </svg>
+            </div>
+          </section>
+
+          <section className="hrd-card">
+            <div className="panel-header" style={{ marginBottom: '0.25rem' }}>
+              <div>
+                <h2 className="panel-title">Komposisi hari ini</h2>
+                <p className="panel-subtitle">{totalEmployees} karyawan terjadwal hari ini</p>
+              </div>
+            </div>
+
+            <div className="hrd-donut-layout">
+              <div className="hrd-donut-box">
+                <svg viewBox="0 0 140 140" width="148" height="148">
+                  <circle cx="70" cy="70" r={donutR} fill="none" stroke="#e2e8f0" strokeWidth="14" />
+                  <circle
+                    cx="70"
+                    cy="70"
+                    r={donutR}
+                    fill="none"
+                    stroke="#06b6d4"
+                    strokeWidth="14"
+                    strokeLinecap="round"
+                    strokeDasharray={`${donutFill} ${donutCirc}`}
+                    transform="rotate(-90 70 70)"
+                  />
+                </svg>
+                <div className="hrd-donut-center">
+                  <strong>{attendancePercentText}%</strong>
+                  <span>Kehadiran</span>
+                </div>
+              </div>
+
+              <div className="hrd-comp-list">
+                <div className="hrd-comp-row">
+                  <div className="hrd-comp-left">
+                    <span className="hrd-comp-square" style={{ backgroundColor: '#06b6d4' }} />
+                    <span>Tepat waktu</span>
+                  </div>
+                  <strong>{onTimeToday}</strong>
+                </div>
+                <div className="hrd-comp-row">
+                  <div className="hrd-comp-left">
+                    <span className="hrd-comp-square" style={{ backgroundColor: '#f97316' }} />
+                    <span>Terlambat</span>
+                  </div>
+                  <strong>{lateToday}</strong>
+                </div>
+                <div className="hrd-comp-row">
+                  <div className="hrd-comp-left">
+                    <span className="hrd-comp-square" style={{ backgroundColor: '#94a3b8' }} />
+                    <span>Cuti &amp; sakit</span>
+                  </div>
+                  <strong>{sickOrLeaveToday}</strong>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div className="hrd-bot-grid">
+          <section className="hrd-card">
+            <div className="panel-header" style={{ marginBottom: '0.75rem' }}>
+              <div>
+                <h2 className="panel-title">Aktivitas absensi terbaru</h2>
+                <p className="panel-subtitle">Pembaruan langsung dari seluruh tim</p>
+              </div>
+              <span className="hrd-live-pill">
+                <span className="hrd-live-dot" />
+                Live
+              </span>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table className="hrd-activity-table">
+                <thead>
+                  <tr>
+                    <th>KARYAWAN</th>
+                    <th>CLOCK IN</th>
+                    <th>METODE</th>
+                    <th>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data?.todayMonitor || []).slice(0, 5).map((row) => {
+                    const pill = hrdStatusPill(row.status);
+                    return (
+                      <tr key={row.employeeId}>
+                        <td>
+                          <div className="hrd-emp-name">{row.fullName}</div>
+                          <div className="hrd-emp-role">{row.position || row.department || '-'}</div>
+                        </td>
+                        <td>{row.clockIn ? String(row.clockIn).slice(0, 5) : '—'}</td>
+                        <td>
+                          {row.method === 'face'
+                            ? 'Face ID'
+                            : row.method === 'manual'
+                              ? 'Manual'
+                              : '—'}
+                        </td>
+                        <td>
+                          <span className={`status-badge ${pill.cls}`}>{pill.label}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="hrd-card">
+            <div className="panel-header" style={{ marginBottom: '0.5rem' }}>
+              <div>
+                <h2 className="panel-title">Perlu persetujuan</h2>
+                <p className="panel-subtitle">Tinjau pengajuan terbaru dari tim Anda.</p>
+              </div>
+              <span className="hrd-pending-count">{stats.pendingTotal || 0}</span>
+            </div>
+
+            <div className="hrd-approval-list">
+              {(data?.pendingLeaves || []).length === 0 ? (
+                <p className="panel-note" style={{ marginTop: '0.75rem' }}>Semua pengajuan sudah diproses.</p>
+              ) : (
+                data.pendingLeaves.slice(0, 4).map((leave) => (
+                  <Link
+                    to={`/hrd/pengajuan-cuti?id=${leave.id}`}
+                    className="hrd-approval-item"
+                    key={leave.id}
+                  >
+                    <div>
+                      <div className="hrd-emp-name">{leave.fullName}</div>
+                      <div className="hrd-emp-role">
+                        {leaveTypeLabel(leave.leaveType)} &bull; {formatDate(leave.startDate)}
+                      </div>
+                    </div>
+                    <span className="hrd-approval-days">
+                      {durationDays(leave.startDate, leave.endDate)} hari &rarr;
+                    </span>
+                  </Link>
+                ))
+              )}
+            </div>
+
+            <Link to="/hrd/pengajuan-cuti" className="hrd-approval-cta">
+              Lihat semua pengajuan &rarr;
+            </Link>
+          </section>
+        </div>
+      </div>
+    );
   }
 
   if (role === 'spv') {

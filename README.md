@@ -22,7 +22,15 @@ Aplikasi Fullstack **GAPJOTEN HRIS — Face Recognition Attendance & Employee Da
   - **Pengajuan Cuti** & **Izin Sakit** tim (hanya baca + lihat surat dokter, tanpa approval)
   - **Laporan Tim** berdasarkan periode + unduh CSV
   - **Informasi Perusahaan** & **Profil Saya**
-- **Role `hrd`:** *Belum diimplementasikan (disiapkan untuk dikerjakan oleh rekan tim HRD).*
+- **Role `hrd` (diimplementasikan penuh):**
+  - **Dashboard HRD** (statistik seluruh karyawan, kehadiran hari ini, keterlambatan, pengajuan menunggu, status pendaftaran wajah, & ringkasan departemen)
+  - **Data Karyawan** (tambah, edit, filter, & hapus data karyawan beserta akun login)
+  - **Face Registration** (perekaman data wajah dengan persetujuan karyawan, enkripsi referensi biometrik, retensi, & penghapusan data)
+  - **Data Absensi** (monitoring hari ini seluruh perusahaan, riwayat lintas departemen, & pencatatan/koreksi absensi manual)
+  - **Pengajuan Cuti** & **Izin Sakit** (periksa pengajuan, lihat surat dokter, setujui/tolak dengan catatan keputusan)
+  - **Informasi Perusahaan** (buat, edit, hapus, & terbitkan pengumuman perusahaan)
+  - **Laporan Absensi** (rekap harian/bulanan seluruh perusahaan + unduh CSV)
+  - **Pengaturan** (konfigurasi jam kerja, toleransi terlambat, kuota cuti, retensi biometrik, departemen/jabatan, & manajemen akun)
 
 ---
 
@@ -65,4 +73,4 @@ Aplikasi web berjalan di `http://localhost:5173`.
 | :--- | :--- | :--- | :--- |
 | **Karyawan** | `budi@gapjoten.id` | `karyawan123` | Divisi Engineering |
 | **SPV** | `spv@gapjoten.id` | `spv123` | Supervisor Divisi Engineering |
-| **HRD** | `hrd@gapjoten.id` | `hrd123` | Placeholder (fitur HRD dikerjakan rekan tim) |
+| **HRD** | `hrd@gapjoten.id` | `hrd123` | Administrator Utama HRD |

@@ -13,6 +13,13 @@ import SpvAttendanceMonitoring from './pages/SpvAttendanceMonitoring.jsx';
 import SpvAttendanceHistory from './pages/SpvAttendanceHistory.jsx';
 import SpvLeaveList from './pages/SpvLeaveList.jsx';
 import SpvTeamReport from './pages/SpvTeamReport.jsx';
+import HrdEmployees from './pages/HrdEmployees.jsx';
+import HrdFaceRegistration from './pages/HrdFaceRegistration.jsx';
+import HrdAttendance from './pages/HrdAttendance.jsx';
+import HrdLeaveApprovals from './pages/HrdLeaveApprovals.jsx';
+import HrdAnnouncements from './pages/HrdAnnouncements.jsx';
+import HrdReports from './pages/HrdReports.jsx';
+import HrdSettings from './pages/HrdSettings.jsx';
 import Announcements from './pages/Announcements.jsx';
 import Profile from './pages/Profile.jsx';
 import HelpCenter from './pages/HelpCenter.jsx';
@@ -59,10 +66,20 @@ function App() {
         <Route path="izin-sakit-tim" element={<RoleGuard allowedRoles={['spv']}><SpvLeaveList category="sakit" /></RoleGuard>} />
         <Route path="laporan-tim" element={<RoleGuard allowedRoles={['spv']}><SpvTeamReport /></RoleGuard>} />
 
-        {/* Menu Bersama (Karyawan & SPV) */}
-        <Route path="informasi" element={<RoleGuard allowedRoles={['karyawan', 'spv']}><Announcements /></RoleGuard>} />
-        <Route path="profil" element={<RoleGuard allowedRoles={['karyawan', 'spv']}><Profile /></RoleGuard>} />
-        <Route path="bantuan" element={<RoleGuard allowedRoles={['karyawan', 'spv']}><HelpCenter /></RoleGuard>} />
+        {/* Menu HRD (Section 6.1) */}
+        <Route path="hrd/karyawan" element={<RoleGuard allowedRoles={['hrd']}><HrdEmployees /></RoleGuard>} />
+        <Route path="hrd/face-registration" element={<RoleGuard allowedRoles={['hrd']}><HrdFaceRegistration /></RoleGuard>} />
+        <Route path="hrd/absensi" element={<RoleGuard allowedRoles={['hrd']}><HrdAttendance /></RoleGuard>} />
+        <Route path="hrd/pengajuan-cuti" element={<RoleGuard allowedRoles={['hrd']}><HrdLeaveApprovals category="all" /></RoleGuard>} />
+        <Route path="hrd/izin-sakit" element={<RoleGuard allowedRoles={['hrd']}><HrdLeaveApprovals category="sakit" /></RoleGuard>} />
+        <Route path="hrd/informasi" element={<RoleGuard allowedRoles={['hrd']}><HrdAnnouncements /></RoleGuard>} />
+        <Route path="hrd/laporan-absensi" element={<RoleGuard allowedRoles={['hrd']}><HrdReports /></RoleGuard>} />
+        <Route path="hrd/pengaturan" element={<RoleGuard allowedRoles={['hrd']}><HrdSettings /></RoleGuard>} />
+
+        {/* Menu Bersama */}
+        <Route path="informasi" element={<RoleGuard allowedRoles={['karyawan', 'spv', 'hrd']}><Announcements /></RoleGuard>} />
+        <Route path="profil" element={<RoleGuard allowedRoles={['karyawan', 'spv', 'hrd']}><Profile /></RoleGuard>} />
+        <Route path="bantuan" element={<RoleGuard allowedRoles={['karyawan', 'spv', 'hrd']}><HelpCenter /></RoleGuard>} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

@@ -51,7 +51,8 @@ class KaryawanController extends Controller
         $usedLeaveDays = $approvedAnnualLeaves->sum(function ($row): int {
             return Carbon::parse($row->start_date)->diffInDays(Carbon::parse($row->end_date)) + 1;
         });
-        $remainingLeaveDays = max(12 - $usedLeaveDays, 0);
+        $annualQuota = $this->annualLeaveQuota();
+        $remainingLeaveDays = max($annualQuota - $usedLeaveDays, 0);
 
         $weekRecords = DB::table('attendances')
             ->where('employee_id', $employee->id)
@@ -184,8 +185,8 @@ class KaryawanController extends Controller
                 'today' => $this->formatAttendance($today),
                 'history' => $history,
                 'settings' => [
-                    'workStart' => self::WORK_START,
-                    'lateToleranceMinutes' => self::LATE_TOLERANCE_MINUTES,
+                    'workStart' => $this->workStartSetting(),
+                    'lateToleranceMinutes' => $this->lateToleranceSetting(),
                 ],
             ],
         ]);
@@ -543,13 +544,35 @@ class KaryawanController extends Controller
             'hasMedicalCertificate' => ! empty($row->medical_certificate_path),
             'status' => $row->status,
             'approverName' => $row->approver_name ?? null,
+            'decisionNotes' => $row->decision_notes ?? null,
             'createdAt' => $row->created_at,
         ];
     }
 
     private function lateDeadline(): Carbon
     {
-        return Carbon::createFromTimeString(self::WORK_START)
-            ->addMinutes(self::LATE_TOLERANCE_MINUTES);
+        return Carbon::createFromTimeString($this->workStartSetting())
+            ->addMinutes($this->lateToleranceSetting());
+    }
+
+    private function workStartSetting(): string
+    {
+        $val = DB::table('system_settings')->where('setting_key', 'work_start')->value('setting_value');
+
+        return is_string($val) && preg_match('/^\d{2}:\d{2}$/', $val) ? $val : self::WORK_START;
+    }
+
+    private function lateToleranceSetting(): int
+    {
+        $val = DB::table('system_settings')->where('setting_key', 'late_tolerance_minutes')->value('setting_value');
+
+        return is_numeric($val) ? (int) $val : self::LATE_TOLERANCE_MINUTES;
+    }
+
+    private function annualLeaveQuota(): int
+    {
+        $val = DB::table('system_settings')->where('setting_key', 'annual_leave_quota')->value('setting_value');
+
+        return is_numeric($val) ? max((int) $val, 1) : 12;
     }
 }

@@ -85,11 +85,9 @@ const Login = () => {
 
         <div style={{ marginTop: '1.25rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', fontSize: '0.8rem', color: '#475569' }}>
           <strong>Akun Demo Tersedia:</strong>
-          <div>Karyawan (Engineering): <code>budi@gapjoten.id</code> / <code>karyawan123</code></div>
+          <div>HRD (Admin Utama): <code>hrd@gapjoten.id</code> / <code>hrd123</code></div>
           <div>SPV (Engineering): <code>spv@gapjoten.id</code> / <code>spv123</code></div>
-          <div style={{ marginTop: '0.35rem', color: '#64748b' }}>
-            *(Role HRD belum aktif — disiapkan untuk pengembangan tim HRD)*
-          </div>
+          <div>Karyawan (Engineering): <code>budi@gapjoten.id</code> / <code>karyawan123</code></div>
         </div>
       </div>
     </div>

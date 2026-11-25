@@ -489,6 +489,7 @@ class SpvController extends Controller
             'hasMedicalCertificate' => ! empty($row->medical_certificate_path),
             'status' => $row->status,
             'approverName' => $row->approver_name,
+            'decisionNotes' => $row->decision_notes ?? null,
             'createdAt' => $row->created_at,
         ];
     }

@@ -26,6 +26,12 @@ class ApiHrisTest extends TestCase
                 ->whereDate('date', now()->toDateString())
                 ->delete();
 
+            DB::table('leave_requests')
+                ->where('employee_id', 3)
+                ->where('leave_type', 'annual')
+                ->where('status', 'approved')
+                ->delete();
+
             $login = $this->postJson('/api/auth/login', [
                 'email' => 'budi@gapjoten.id',
                 'password' => 'karyawan123',
@@ -196,5 +202,220 @@ class ApiHrisTest extends TestCase
 
         $this->withToken($token)->getJson('/api/karyawan/dashboard')->assertForbidden();
         $this->withToken($token)->getJson('/api/spv/dashboard')->assertForbidden();
+    }
+
+    public function test_hrd_can_manage_employees_face_registration_leaves_announcements_reports_and_settings(): void
+    {
+        DB::beginTransaction();
+
+        try {
+            $karyawanLogin = $this->postJson('/api/auth/login', [
+                'email' => 'budi@gapjoten.id',
+                'password' => 'karyawan123',
+            ])->assertOk();
+            $this->withToken($karyawanLogin->json('data.token'))
+                ->getJson('/api/hrd/dashboard')
+                ->assertForbidden();
+
+            $spvLogin = $this->postJson('/api/auth/login', [
+                'email' => 'spv@gapjoten.id',
+                'password' => 'spv123',
+            ])->assertOk();
+            $this->withToken($spvLogin->json('data.token'))
+                ->getJson('/api/hrd/employees')
+                ->assertForbidden();
+
+            $hrdLogin = $this->postJson('/api/auth/login', [
+                'email' => 'hrd@gapjoten.id',
+                'password' => 'hrd123',
+            ])->assertOk();
+            $token = $hrdLogin->json('data.token');
+
+            // 1. Dashboard HRD
+            $this->withToken($token)
+                ->getJson('/api/hrd/dashboard')
+                ->assertOk()
+                ->assertJsonPath('success', true)
+                ->assertJsonStructure([
+                    'data' => [
+                        'hrd',
+                        'stats' => ['totalEmployees', 'presentToday', 'lateToday', 'newThisMonth', 'sickToday', 'leaveToday', 'pendingTotal', 'faceRegisteredCount'],
+                        'weeklyTrend',
+                        'departmentBreakdown',
+                        'todayMonitor',
+                        'pendingLeaves',
+                    ],
+                ])
+                ->assertJsonCount(5, 'data.weeklyTrend');
+
+            foreach (['total', 'present', 'late', 'leave_sick'] as $summaryType) {
+                $this->withToken($token)
+                    ->getJson("/api/hrd/summary-detail?type={$summaryType}")
+                    ->assertOk()
+                    ->assertJsonPath('data.type', $summaryType)
+                    ->assertJsonStructure(['data' => ['title', 'subtitle', 'items']]);
+            }
+
+            // 2. Data Karyawan (Create, Update, List, Delete)
+            $createdEmployee = $this->withToken($token)
+                ->postJson('/api/hrd/employees', [
+                    'full_name' => 'Rina Kartika',
+                    'gender' => 'female',
+                    'email' => 'rina.test@gapjoten.id',
+                    'password' => 'secret123',
+                    'role' => 'karyawan',
+                    'department_id' => 1,
+                    'position_id' => 3,
+                    'phone' => '081299998888',
+                    'address' => 'Jakarta Selatan',
+                    'join_date' => now()->toDateString(),
+                    'status' => 'active',
+                ])
+                ->assertCreated()
+                ->assertJsonPath('data.fullName', 'Rina Kartika');
+
+            $employeeId = $createdEmployee->json('data.id');
+
+            $this->withToken($token)
+                ->putJson("/api/hrd/employees/{$employeeId}", [
+                    'nip' => $createdEmployee->json('data.nip'),
+                    'full_name' => 'Rina Kartika Sari',
+                    'gender' => 'female',
+                    'email' => 'rina.test@gapjoten.id',
+                    'role' => 'karyawan',
+                    'department_id' => 1,
+                    'position_id' => 2,
+                    'phone' => '081299990000',
+                    'address' => 'Depok',
+                    'join_date' => now()->toDateString(),
+                    'status' => 'probation',
+                    'account_status' => 'active',
+                ])
+                ->assertOk()
+                ->assertJsonPath('data.fullName', 'Rina Kartika Sari');
+
+            // 3. Face Registration (wajib persetujuan + terenkripsi)
+            $this->withToken($token)
+                ->postJson('/api/hrd/face-registrations', [
+                    'employee_id' => $employeeId,
+                    'consent_given' => false,
+                    'face_signature' => 'face-vec-0.12-0.45-0.88-sample',
+                    'liveness_verified' => true,
+                ])
+                ->assertStatus(422);
+
+            $this->withToken($token)
+                ->postJson('/api/hrd/face-registrations', [
+                    'employee_id' => $employeeId,
+                    'consent_given' => true,
+                    'face_signature' => 'face-vec-0.12-0.45-0.88-sample',
+                    'liveness_verified' => true,
+                    'notes' => 'Pendaftaran awal HRD',
+                ])
+                ->assertCreated()
+                ->assertJsonPath('data.employeeId', $employeeId);
+
+            $this->withToken($token)
+                ->getJson('/api/hrd/face-registrations')
+                ->assertOk()
+                ->assertJsonPath('success', true);
+
+            $this->withToken($token)
+                ->deleteJson("/api/hrd/face-registrations/{$employeeId}")
+                ->assertOk();
+
+            // 4. Data Absensi & Koreksi Manual HRD
+            $this->withToken($token)
+                ->postJson('/api/hrd/attendance', [
+                    'employee_id' => $employeeId,
+                    'date' => now()->toDateString(),
+                    'status' => 'present',
+                    'clock_in' => '07:55',
+                    'clock_out' => '17:02',
+                    'method' => 'manual',
+                    'notes' => 'Input absensi oleh HRD',
+                ])
+                ->assertOk();
+
+            $this->withToken($token)
+                ->getJson('/api/hrd/attendance')
+                ->assertOk()
+                ->assertJsonPath('success', true);
+
+            // 5. Approval Pengajuan Cuti & Izin Sakit
+            $leaveRes = $this->withToken($token)
+                ->getJson('/api/hrd/leave-requests?status=pending')
+                ->assertOk();
+
+            $firstPendingId = $leaveRes->json('data.items.0.id');
+            if ($firstPendingId !== null) {
+                $this->withToken($token)
+                    ->putJson("/api/hrd/leave-requests/{$firstPendingId}/decision", [
+                        'status' => 'approved',
+                        'decision_notes' => 'Disetujui sesuai kebijakan perusahaan',
+                    ])
+                    ->assertOk()
+                    ->assertJsonPath('data.status', 'approved');
+            }
+
+            // 6. Informasi Perusahaan (Create, Update, Delete)
+            $ann = $this->withToken($token)
+                ->postJson('/api/hrd/announcements', [
+                    'title' => 'Pengumuman Uji HRD',
+                    'body' => 'Isi pengumuman uji coba sistem HRD.',
+                ])
+                ->assertCreated()
+                ->assertJsonPath('data.title', 'Pengumuman Uji HRD');
+
+            $annId = $ann->json('data.id');
+
+            $this->withToken($token)
+                ->putJson("/api/hrd/announcements/{$annId}", [
+                    'title' => 'Pengumuman Uji HRD Updated',
+                    'body' => 'Isi pengumuman diperbarui.',
+                ])
+                ->assertOk()
+                ->assertJsonPath('data.title', 'Pengumuman Uji HRD Updated');
+
+            $this->withToken($token)
+                ->deleteJson("/api/hrd/announcements/{$annId}")
+                ->assertOk();
+
+            // 7. Laporan Absensi
+            $this->withToken($token)
+                ->getJson('/api/hrd/reports')
+                ->assertOk()
+                ->assertJsonStructure(['data' => ['startDate', 'endDate', 'totals', 'rows', 'dailyBreakdown']]);
+
+            // 8. Pengaturan & Profil HRD
+            $this->withToken($token)
+                ->getJson('/api/hrd/settings')
+                ->assertOk()
+                ->assertJsonPath('data.settings.work_start', '08:00');
+
+            $this->withToken($token)
+                ->putJson('/api/hrd/settings', [
+                    'company_name' => 'GAPJOTEN Technology Solutions',
+                    'office_location' => 'Jakarta - Kantor Pusat',
+                    'work_start' => '08:00',
+                    'work_end' => '17:00',
+                    'late_tolerance_minutes' => 15,
+                    'annual_leave_quota' => 12,
+                    'biometric_retention_days' => 365,
+                    'allow_alternative_attendance' => true,
+                ])
+                ->assertOk();
+
+            $this->withToken($token)
+                ->getJson('/api/hrd/profile')
+                ->assertOk()
+                ->assertJsonPath('data.role', 'hrd');
+
+            $this->withToken($token)
+                ->deleteJson("/api/hrd/employees/{$employeeId}")
+                ->assertOk();
+        } finally {
+            DB::rollBack();
+        }
     }
 }
