@@ -48,8 +48,8 @@ const SpvAttendanceHistory = () => {
       </div>
 
       <section className="panel" style={{ marginBottom: '1.5rem' }}>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
-          <div>
+        <form onSubmit={handleSubmit} className="inline-filter-form">
+          <div className="filter-field">
             <label className="notes-label" htmlFor="spv-start">Dari Tanggal</label>
             <input
               id="spv-start"
@@ -59,7 +59,7 @@ const SpvAttendanceHistory = () => {
               className="notes-input"
             />
           </div>
-          <div>
+          <div className="filter-field">
             <label className="notes-label" htmlFor="spv-end">Sampai Tanggal</label>
             <input
               id="spv-end"
@@ -69,7 +69,7 @@ const SpvAttendanceHistory = () => {
               className="notes-input"
             />
           </div>
-          <div>
+          <div className="filter-field">
             <label className="notes-label" htmlFor="spv-emp">Anggota</label>
             <select
               id="spv-emp"
@@ -83,7 +83,7 @@ const SpvAttendanceHistory = () => {
               ))}
             </select>
           </div>
-          <div>
+          <div className="filter-field">
             <label className="notes-label" htmlFor="spv-stat">Status</label>
             <select
               id="spv-stat"
@@ -99,18 +99,20 @@ const SpvAttendanceHistory = () => {
               <option value="absent">Alpa</option>
             </select>
           </div>
-          <button type="submit" className="btn-primary">Terapkan</button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              const reset = { start_date: '', end_date: '', employee_id: '', status: '' };
-              setFilters(reset);
-              loadHistory(reset);
-            }}
-          >
-            Reset
-          </button>
+          <div className="filter-actions">
+            <button type="submit" className="btn-primary">Terapkan</button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                const reset = { start_date: '', end_date: '', employee_id: '', status: '' };
+                setFilters(reset);
+                loadHistory(reset);
+              }}
+            >
+              Reset
+            </button>
+          </div>
         </form>
       </section>
 

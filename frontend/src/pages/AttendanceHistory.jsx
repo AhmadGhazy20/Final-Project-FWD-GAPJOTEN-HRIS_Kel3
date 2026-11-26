@@ -42,27 +42,29 @@ const AttendanceHistory = () => {
       </div>
 
       <section className="panel" style={{ marginBottom: '1.5rem' }}>
-        <form onSubmit={handleFilter} style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
-          <div>
+        <form onSubmit={handleFilter} className="inline-filter-form">
+          <div className="filter-field">
             <label className="notes-label" htmlFor="hist-start">Dari Tanggal</label>
             <input id="hist-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="notes-input" />
           </div>
-          <div>
+          <div className="filter-field">
             <label className="notes-label" htmlFor="hist-end">Sampai Tanggal</label>
             <input id="hist-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="notes-input" />
           </div>
-          <button type="submit" className="btn-primary">Filter Periode</button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              setStartDate('');
-              setEndDate('');
-              loadHistory();
-            }}
-          >
-            Reset
-          </button>
+          <div className="filter-actions">
+            <button type="submit" className="btn-primary">Filter Periode</button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+                loadHistory();
+              }}
+            >
+              Reset
+            </button>
+          </div>
         </form>
       </section>
 

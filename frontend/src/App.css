@@ -2402,3 +2402,56 @@
     position: static;
   }
 }
+
+.inline-filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1rem;
+  align-items: flex-end;
+}
+
+.inline-filter-form .filter-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 170px;
+}
+
+.inline-filter-form .notes-label {
+  margin-bottom: 0.35rem;
+}
+
+.inline-filter-form .notes-input {
+  margin-bottom: 0;
+  height: 40px;
+  padding: 0 0.75rem;
+  box-sizing: border-box;
+  background-color: #ffffff;
+}
+
+.inline-filter-form .filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.inline-filter-form .btn-primary,
+.inline-filter-form .btn-secondary {
+  height: 40px;
+  padding: 0 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .inline-filter-form .filter-field,
+  .inline-filter-form .filter-actions {
+    width: 100%;
+  }
+
+  .inline-filter-form .filter-actions .btn-primary,
+  .inline-filter-form .filter-actions .btn-secondary {
+    flex: 1;
+  }
+}
